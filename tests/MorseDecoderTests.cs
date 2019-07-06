@@ -15,50 +15,14 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
         [TestInitialize]
         public void Setup()
         {
+            ISet<string> dictionary = MorseDecoderTests.GetDefaultDictionary();
+
             this.decoder = new MorseDecoder()
             {
                 MorseSequence = "--.----.......-.---.--......-..",
-                FirstLetters = GetDefaultFirstLetters(GetDefaultDictionary()),
-                WordsByFirstLetter = GetDefaultWordsByFirstLetter(GetDefaultDictionary())
+                FirstLetters = MorseDecoderTests.GetFirstLetters(dictionary),
+                WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
-        }
-
-        private static ISet<string> GetDefaultDictionary()
-        {
-            return new HashSet<string>
-            {
-                "GOD", "IS", "NO", "NOW", "HERE", "WHERE",
-                "HER", "GO", "ME", "MED", "MOD", "MO", "E"
-            };
-        }
-
-        private static ISet<char> GetDefaultFirstLetters(ISet<string> dictionary)
-        {
-            ISet<char> result = new HashSet<char>();
-
-            foreach (string word in dictionary)
-            {
-                result.Add(word[0]);
-            }
-
-            return result;
-        }
-
-        private static IDictionary<char, ISet<string>> GetDefaultWordsByFirstLetter(ISet<string> dictionary)
-        {
-            IDictionary<char, ISet<string>> result = new Dictionary<char, ISet<string>>();
-
-            foreach (string word in dictionary)
-            {
-                if (!result.ContainsKey(word[0]))
-                {
-                    result[word[0]] = new HashSet<string>();
-                }
-
-                result[word[0]].Add(word);
-            }
-
-            return result;
         }
 
         [TestMethod]
@@ -66,7 +30,7 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
         {
             string morse = "--.----.......-.---.--......-..";
 
-            int solution = await this.decoder.DecodeAsync(morse, GetDefaultDictionary());
+            int solution = await this.decoder.DecodeAsync(morse, MorseDecoderTests.GetDefaultDictionary());
             Assert.AreEqual(6, solution);
         }
 
@@ -82,13 +46,12 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
 
             this.decoder = new MorseDecoder()
             {
-                //AvailableWords = GetDefaultDictionary(),
-                FirstLetters = GetDefaultFirstLetters(dictionary),
-                WordsByFirstLetter = GetDefaultWordsByFirstLetter(dictionary)
+                FirstLetters = MorseDecoderTests.GetFirstLetters(dictionary),
+                WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
 
-            IEnumerable<KeyValuePair<string, string>> result = this.decoder.GetValidSequencesFromMorse(morse, new KeyValuePair<string, string>("", ""));
-            Assert.AreEqual(6, result.Count());
+            ISet<KeyValuePair<string, string>> result = this.decoder.GetValidSequencesFromMorse(morse, new KeyValuePair<string, string>("", ""));
+            Assert.AreEqual(6, result.Count);
         }
 
         [TestMethod]
@@ -108,19 +71,9 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
 
             this.decoder = new MorseDecoder()
             {
-                //AvailableWords = dictionary,
                 MorseSequence = "......-...-..---.-----.-..-..-..",
-                FirstLetters = new HashSet<char>
-                {
-                    'H', 'O', 'W', 'T'
-                },
-                WordsByFirstLetter = new Dictionary<char, ISet<string>>
-                {
-                    { 'H', new HashSet<string> { "HELL", "HELLO" } },
-                    { 'O', new HashSet<string> { "OWORLD" } },
-                    { 'W', new HashSet<string> { "WORLD" } },
-                    { 'T', new HashSet<string> { "TEST" } },
-                }
+                FirstLetters = MorseDecoderTests.GetFirstLetters(dictionary),
+                WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
 
             await this.decoder.SearchMorseSequenceAsync(0, new KeyValuePair<string, string>("", ""));
@@ -130,23 +83,16 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
         [TestMethod]
         public async Task TestElapsedTime()
         {
+            int runCount = 10;
+            long[] runTimes = new long[runCount];
 
-            long[] runTimes =
+            for (int i = 0; i < runCount; i++)
             {
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-                await this.RunAndMeasureElapsedMs(),
-            };
+                runTimes[i] = await this.RunAndMeasureElapsedMs();
+            }
 
             double sum = runTimes.Sum(runtime => runtime);
-            double average = sum / runTimes.Length + 0.0;
+            double average = sum / runCount + 0.0;
 
             Assert.IsTrue(average < 0.51);
         }
@@ -164,8 +110,8 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
             this.decoder = new MorseDecoder()
             {
                 MorseSequence = morse,
-                FirstLetters = GetDefaultFirstLetters(dictionary),
-                WordsByFirstLetter = GetDefaultWordsByFirstLetter(dictionary)
+                FirstLetters = MorseDecoderTests.GetFirstLetters(dictionary),
+                WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
 
             Stopwatch stopwatch = new Stopwatch();
@@ -173,6 +119,44 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
             await this.decoder.SearchMorseSequenceAsync(0, new KeyValuePair<string, string>("", ""));
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;
+        }
+
+        private static ISet<string> GetDefaultDictionary()
+        {
+            return new HashSet<string>
+            {
+                "GOD", "IS", "NO", "NOW", "HERE", "WHERE",
+                "HER", "GO", "ME", "MED", "MOD", "MO", "E"
+            };
+        }
+
+        private static ISet<char> GetFirstLetters(ISet<string> dictionary)
+        {
+            ISet<char> result = new HashSet<char>();
+
+            foreach (string word in dictionary)
+            {
+                result.Add(word[0]);
+            }
+
+            return result;
+        }
+
+        private static IDictionary<char, ISet<string>> GetWordsByFirstLetter(ISet<string> dictionary)
+        {
+            IDictionary<char, ISet<string>> result = new Dictionary<char, ISet<string>>();
+
+            foreach (string word in dictionary)
+            {
+                if (!result.ContainsKey(word[0]))
+                {
+                    result[word[0]] = new HashSet<string>();
+                }
+
+                result[word[0]].Add(word);
+            }
+
+            return result;
         }
     }
 }
