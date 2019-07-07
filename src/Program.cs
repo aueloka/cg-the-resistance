@@ -143,14 +143,16 @@ namespace Austine.CodinGame.TheResistance
 
                 await this.DecodeMorseSequenceAsync(newDecodedContext, newIndex, currentDecodedMessage);
 
-                if (this.CheckWordExists(newDecodedContext.Value))
+                if (!this.CheckWordExists(newDecodedContext.Value))
                 {
-                    string newPreceedingMessage = currentDecodedMessage + newDecodedContext.Value + " ";
-                    await Console.Error.WriteLineAsync($"New sequence discovered: {newPreceedingMessage}\n");
-
-                    //clear decoded context to start attempting new words
-                    await this.DecodeMorseSequenceAsync(MorseDecoder.GetEmptyDecodedContext(), newIndex, newPreceedingMessage);
+                    continue;
                 }
+
+                string newPreceedingMessage = currentDecodedMessage + newDecodedContext.Value + " ";
+                await Console.Error.WriteLineAsync($"New sequence discovered: {newPreceedingMessage}\n");
+
+                //clear decoded context to start attempting new words
+                await this.DecodeMorseSequenceAsync(MorseDecoder.GetEmptyDecodedContext(), newIndex, newPreceedingMessage);
             }
         }
 
