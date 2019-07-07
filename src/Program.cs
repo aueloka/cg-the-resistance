@@ -11,44 +11,29 @@ namespace Austine.CodinGame.TheResistance
     {
         internal static class Config
         {
-            public const int RunWithConsole = 0;
-            public const int GenerateInputOnRun = 1;
-            public const int InputGeneratorWordCount = 1000;
-            public const int InputGeneratorWordMin = 2;
+            public const bool RunWithConsole = false;
+            public const bool ShouldGenerateInputOnRun = false;
+            public const int InputGeneratorWordCount = 300;
+            public const int InputGeneratorWordMin = 3;
             public const int InputGeneratorWordMax = 8;
-            public const int InputGeneratorSentenceWordCount = 6;
-            public const string InputFilePath = @"C:\Users\aueloka\Desktop\in.txt";
-            public const string OutputFilePath = @"C:\Users\aueloka\Desktop\out.txt";
+            public const int InputGeneratorSentenceWordCount = 10;
+            public const string InputFilePath = "in.txt";
+            public const string OutputFilePath = "out.txt";
         }
 
         #region Initializers
-        private static void Main(string[] args)
+        private static void Main()
         {
-            int runWithConsole = Config.RunWithConsole;
-            int generateNewInput = Config.GenerateInputOnRun;
+            IInputReader inputReader = Program.GetInputReader();
 
-            if (runWithConsole == 1)
-            {
-                RunWithConsoleInput();
-            }
-            else
-            {
-                RunWithFileInput(generateNewInput == 1);
-            }
-        }
-
-        private static void RunWithConsoleInput()
-        {
-            string L = Console.ReadLine();
-            int N = int.Parse(Console.ReadLine());
-            //ISet<string> dictionary = new HashSet<string>();
+            string L = inputReader.ReadLine();
+            int N = int.Parse(inputReader.ReadLine());
 
             MorseDecoder decoder = new MorseDecoder();
 
             for (int i = 0; i < N; i++)
             {
-                string W = Console.ReadLine();
-                //dictionary.Add(W);
+                string W = inputReader.ReadLine();
 
                 if (!decoder.WordsByFirstLetter.ContainsKey(W[0]))
                 {
@@ -59,65 +44,54 @@ namespace Austine.CodinGame.TheResistance
                 decoder.FirstLetters.Add(W[0]);
             }
 
+            inputReader.Dispose();
+
             Console.WriteLine(decoder.DecodeAsync(L).GetAwaiter().GetResult());
             Console.Read();
         }
 
-        private static void RunWithFileInput(bool regenerate = false)
+        private static IInputReader GetInputReader()
+        {
+            IInputReader inputReader;
+
+            if (Config.RunWithConsole)
+            {
+                inputReader = Program.GetConsoleInputReader();
+            }
+            else
+            {
+                inputReader = Program.GetFileInputReader(Config.ShouldGenerateInputOnRun);
+            }
+
+            return inputReader;
+        }
+
+        private static IInputReader GetConsoleInputReader()
+        {
+            return new ConsoleInputReader();
+        }
+
+        private static IInputReader GetFileInputReader(bool regenerate = false)
         {
             if (regenerate)
             {
-                GenerateNewInput();
+                Program.GenerateNewInput();
             }
 
-            StreamReader file = null;
-            MorseDecoder decoder = new MorseDecoder();
-            string L;
-
-            try
-            {
-                file = new StreamReader(Config.InputFilePath);
-
-                L = file.ReadLine();
-                int N = int.Parse(file.ReadLine());
-
-                for (int i = 0; i < N; i++)
-                {
-                    string W = file.ReadLine();
-
-                    if (!decoder.WordsByFirstLetter.ContainsKey(W[0]))
-                    {
-                        decoder.WordsByFirstLetter[W[0]] = new HashSet<string>();
-                    }
-
-                    decoder.WordsByFirstLetter[W[0]].Add(W);
-                    decoder.FirstLetters.Add(W[0]);
-                }
-            }
-            finally
-            {
-                if (file != null)
-                {
-                    file.Close();
-                }
-            }
-
-            Console.WriteLine(decoder.DecodeAsync(L).GetAwaiter().GetResult());
-            Console.Read();
+            return new FileInputReader(Config.InputFilePath);
         }
 
         private static void GenerateNewInput()
         {
             Random r = new Random(DateTime.Now.Millisecond * DateTime.Now.Millisecond);
 
-            int wordCount = Config.InputGeneratorWordCount;
-            int wordMin = Config.InputGeneratorWordMin;
-            int wordMax = Config.InputGeneratorWordMax;
-            int sentenceWordCount = Config.InputGeneratorSentenceWordCount;
+            const int wordCount = Config.InputGeneratorWordCount;
+            const int wordMin = Config.InputGeneratorWordMin;
+            const int wordMax = Config.InputGeneratorWordMax;
+            const int sentenceWordCount = Config.InputGeneratorSentenceWordCount;
+            const string alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-            string alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-            List<string> words = new List<string>();
+            IList<string> words = new List<string>();
 
             for (int i = 0; i < wordCount; i++)
             {
@@ -179,12 +153,55 @@ namespace Austine.CodinGame.TheResistance
         #endregion
     }
 
+    #region InputReaders
+    internal interface IInputReader: IDisposable
+    {
+        string ReadLine();
+    }
+
+    internal sealed class ConsoleInputReader : IInputReader
+    {
+        public string ReadLine()
+        {
+            return Console.ReadLine();
+        }
+
+        public void Dispose()
+        {
+            return;
+        }
+    }
+
+    internal sealed class FileInputReader : IInputReader
+    {
+        private readonly StreamReader file;
+
+        public FileInputReader(string filePath)
+        {
+            this.file = new StreamReader(filePath);
+        }
+
+        public string ReadLine()
+        {
+            return this.file.ReadLine();
+        }
+
+        public void Dispose()
+        {
+            if (this.file != null)
+            {
+                this.file.Close();
+            }
+        }
+    }
+    #endregion
+
     public interface IMorseDecoder
     {
         Task<int> DecodeAsync(string morseSequence, ISet<string> availableWords = null);
     }
 
-    public class MorseDecoder : IMorseDecoder
+    public sealed class MorseDecoder : IMorseDecoder
     {
         public static readonly IDictionary<string, char> MorseDictionary = new Dictionary<string, char>
         {
@@ -202,9 +219,11 @@ namespace Austine.CodinGame.TheResistance
             "1111", "112", "121", "13", "211", "22", "31", "4"
         };
 
+        private const int MorseCharacterMaxLength = 4;
+
         private readonly ISet<string> ignoredSequences = new HashSet<string>();
         private readonly ISet<string> decodedMessages = new HashSet<string>();
-        private readonly ISet<string> allCache = new HashSet<string>();
+        private readonly ISet<string> searchStateCache = new HashSet<string>();
 
         public ISet<char> FirstLetters { get; set; } = new HashSet<char>();
 
@@ -219,7 +238,7 @@ namespace Austine.CodinGame.TheResistance
             this.MorseSequence = morseSequence;
             this.decodedMessages.Clear();
             this.ignoredSequences.Clear();
-            this.allCache.Clear();
+            this.searchStateCache.Clear();
 
             await Console.Error.WriteLineAsync($"Decoding Morse Sequence: {morseSequence}");
             await Console.Error.WriteLineAsync($"Sequence Length: {morseSequence.Length}");
@@ -236,7 +255,9 @@ namespace Austine.CodinGame.TheResistance
             }
             stopwatch.Stop();
 
-            await Console.Error.WriteLineAsync($"Elapsed: {stopwatch.ElapsedMilliseconds} ms");
+            await Console.Error.WriteLineAsync($"{Environment.NewLine}Elapsed: {stopwatch.ElapsedMilliseconds} ms");
+            await Console.Error.WriteLineAsync($"Cache Size: {this.searchStateCache.Count}");
+
             return this.DecodedMessageCount;
         }
 
@@ -252,9 +273,9 @@ namespace Austine.CodinGame.TheResistance
             }
 
             string cacheHash = preceedingMessage + currentIndex + currentTrackingContext.Value;
-            if (this.allCache.Contains(cacheHash))
+            if (this.searchStateCache.Contains(cacheHash))
             {
-                // await Console.Error.WriteLineAsync($"Encountered cached message: {cacheHash}");
+                await Console.Error.WriteLineAsync($"Cached State: {cacheHash}");
                 return;
             }
 
@@ -265,12 +286,11 @@ namespace Austine.CodinGame.TheResistance
                 return;
             }
 
-
-            string searchScope = this.MorseSequence.Substring(currentIndex, Math.Min(4, this.MorseSequence.Length - currentIndex));
+            string searchScope = this.MorseSequence.Substring(currentIndex, Math.Min(MorseDecoder.MorseCharacterMaxLength, this.MorseSequence.Length - currentIndex));
 
             ISet<KeyValuePair<string, string>> validSequences = this.GetValidSequencesFromMorse(searchScope, currentTrackingContext);
 
-            this.allCache.Add(cacheHash);
+            this.searchStateCache.Add(cacheHash);
 
             foreach (KeyValuePair<string, string> newTrackingContext in validSequences)
             {
@@ -278,7 +298,7 @@ namespace Austine.CodinGame.TheResistance
 
                 await this.SearchMorseSequenceAsync(newIndex, newTrackingContext, preceedingMessage);
 
-                if (this.WordsByFirstLetter[newTrackingContext.Value[0]].Contains(newTrackingContext.Value))
+                if (this.CheckWordExists(newTrackingContext.Value))
                 {
                     string newPreceedingMessage = preceedingMessage + newTrackingContext.Value + ";";
                     await Console.Error.WriteLineAsync($"New sequence discovered: {newPreceedingMessage}\n");
@@ -291,7 +311,7 @@ namespace Austine.CodinGame.TheResistance
 
         public ISet<KeyValuePair<string, string>> GetValidSequencesFromMorse(string morse, KeyValuePair<string, string> context)
         {
-            if (string.IsNullOrEmpty(morse) || context.Key == morse)
+            if (string.IsNullOrEmpty(morse))
             {
                 return new HashSet<KeyValuePair<string, string>>();
             }
@@ -401,6 +421,16 @@ namespace Austine.CodinGame.TheResistance
             }
 
             return false;
+        }
+
+        private bool CheckWordExists(string word)
+        {
+            if (string.IsNullOrEmpty(word) || !this.FirstLetters.Contains(word[0]))
+            {
+                return false;
+            }
+
+            return this.WordsByFirstLetter[word[0]].Contains(word);
         }
     }
 }
