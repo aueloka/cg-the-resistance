@@ -12,10 +12,10 @@ namespace Austine.CodinGame.TheResistance
     {
         public const bool ReadInputFromConsole = false;
         public const bool ShouldGenerateInputOnRun = true;
-        public const int InputGeneratorWordCount = 500;
-        public const int InputGeneratorWordMin = 3;
+        public const int InputGeneratorWordCount = 1500;
+        public const int InputGeneratorWordMin = 6;
         public const int InputGeneratorWordMax = 12;
-        public const int InputGeneratorSentenceWordCount = 20;
+        public const int InputGeneratorSentenceWordCount = 120;
         public const string InputFilePath = "in.txt";
         public const string OutputFilePath = "out.txt";
     }
@@ -47,9 +47,9 @@ namespace Austine.CodinGame.TheResistance
 
         private const int MorseCharacterMaxLength = 4;
 
-        private readonly ISet<string> ignoredSequences = new HashSet<string>();
         private readonly ISet<string> decodedMessages = new HashSet<string>();
         private readonly ISet<string> searchStateCache = new HashSet<string>();
+        private readonly IDictionary<string, bool> phraseCache = new Dictionary<string, bool>();
 
         public ISet<char> FirstLetters { get; set; } = new HashSet<char>();
 
@@ -66,8 +66,8 @@ namespace Austine.CodinGame.TheResistance
         {
             this.MorseSequence = morseSequence;
             this.decodedMessages.Clear();
-            this.ignoredSequences.Clear();
             this.searchStateCache.Clear();
+            this.phraseCache.Clear();
 
             await Console.Error.WriteLineAsync($"Decoding Morse Sequence: {morseSequence}");
             await Console.Error.WriteLineAsync($"Sequence Length: {morseSequence.Length}");
@@ -87,7 +87,11 @@ namespace Austine.CodinGame.TheResistance
             stopwatch.Stop();
 
             await Console.Error.WriteLineAsync($"{Environment.NewLine}Elapsed: {stopwatch.ElapsedMilliseconds} ms");
-            await Console.Error.WriteLineAsync($"Cache Size: {this.searchStateCache.Count}");
+            await Console.Error.WriteLineAsync($"Decode Cache Size: {this.searchStateCache.Count}");
+            await Console.Error.WriteLineAsync($"Phrase Cache Size: {this.phraseCache.Count}");
+
+            this.searchStateCache.Clear();
+            this.phraseCache.Clear();
 
             return this.DecodedMessageCount;
         }
@@ -129,7 +133,6 @@ namespace Austine.CodinGame.TheResistance
             string cacheHash = currentDecodedMessage + startIndex + currentDecodedContext.Value;
             if (this.searchStateCache.Contains(cacheHash))
             {
-                await Console.Error.WriteLineAsync($"Cached State: {cacheHash}");
                 return;
             }
 
@@ -223,7 +226,6 @@ namespace Austine.CodinGame.TheResistance
                 if (this.ShouldIgnoreMorse(morseCharacterToDecode))
                 {
                     //ignore characters that are invalid in the current state
-                    this.ignoredSequences.Add(morseCharacterToDecode);
                     return;
                 }
 
@@ -259,26 +261,31 @@ namespace Austine.CodinGame.TheResistance
 
         private bool ShouldIgnoreMorse(string morse)
         {
-            return !MorseDecoder.MorseDictionary.ContainsKey(morse)
-                   || this.ignoredSequences.Contains(morse)
-                   ;
+            return !MorseDecoder.MorseDictionary.ContainsKey(morse);
         }
 
         private bool CheckPhraseExists(string phrase)
         {
-            if (!this.FirstLetters.Contains(phrase[0]))
+            if (string.IsNullOrEmpty(phrase) || !this.FirstLetters.Contains(phrase[0]))
             {
                 return false;
+            }
+
+            if (this.phraseCache.ContainsKey(phrase))
+            {
+                return this.phraseCache[phrase];
             }
 
             foreach (string word in this.WordsByFirstLetter[phrase[0]])
             {
                 if (word == phrase || word.StartsWith(phrase))
                 {
+                    this.phraseCache[phrase] = true;
                     return true;
                 }
             }
 
+            this.phraseCache[phrase] = false;
             return false;
         }
 
