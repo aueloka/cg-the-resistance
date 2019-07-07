@@ -50,14 +50,14 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
                 WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
 
-            ISet<KeyValuePair<string, string>> result = this.decoder.GetValidSequencesFromMorse(morse, new KeyValuePair<string, string>("", ""));
+            ISet<KeyValuePair<string, string>> result = this.decoder.DecodeMorse(morse);
             Assert.AreEqual(6, result.Count);
         }
 
         [TestMethod]
         public async Task TestSearchSequence()
         {
-            await this.decoder.SearchMorseSequenceAsync(0, new KeyValuePair<string, string>("", ""));
+            await this.decoder.SearchAndDecodeMorseSequenceAsync();
             Assert.AreEqual(6, this.decoder.DecodedMessageCount);
         }
 
@@ -76,7 +76,7 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
                 WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
 
-            await this.decoder.SearchMorseSequenceAsync(0, new KeyValuePair<string, string>("", ""));
+            await this.decoder.SearchAndDecodeMorseSequenceAsync();
             Assert.AreEqual(2, this.decoder.DecodedMessageCount);
         }
 
@@ -116,7 +116,7 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            await this.decoder.SearchMorseSequenceAsync(0, new KeyValuePair<string, string>("", ""));
+            await this.decoder.SearchAndDecodeMorseSequenceAsync();
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;
         }

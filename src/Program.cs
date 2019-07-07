@@ -26,7 +26,7 @@ namespace Austine.CodinGame.TheResistance
             { "-.--", 'Y' }, { "--..", 'Z' },
         };
 
-        private static readonly IList<string> SequenceCombinations = new List<string>
+        private static readonly IList<string> DecodingCombinations = new List<string>
         {
             "1111", "112", "121", "13", "211", "22", "31", "4"
         };
@@ -57,14 +57,16 @@ namespace Austine.CodinGame.TheResistance
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
+
             try
             {
-                await this.SearchMorseSequenceAsync(0, this.GetEmptyContext());
+                await this.SearchAndDecodeMorseSequenceAsync();
             }
             catch (Exception e)
             {
                 await Console.Error.WriteLineAsync(e.StackTrace);
             }
+
             stopwatch.Stop();
 
             await Console.Error.WriteLineAsync($"{Environment.NewLine}Elapsed: {stopwatch.ElapsedMilliseconds} ms");
@@ -73,10 +75,10 @@ namespace Austine.CodinGame.TheResistance
             return this.DecodedMessageCount;
         }
 
-        public async Task SearchMorseSequenceAsync(
-            int currentIndex,
-            KeyValuePair<string, string> currentTrackingContext,
-            string preceedingMessage = "")
+        public async Task SearchAndDecodeMorseSequenceAsync(
+            KeyValuePair<string, string> currentDecodedContext = default,
+            int currentIndex = default,
+            string currentDecodedMessage = "")
         {
             if (currentIndex > this.MorseSequence.Length)
             {
@@ -84,120 +86,128 @@ namespace Austine.CodinGame.TheResistance
                 return;
             }
 
-            string cacheHash = preceedingMessage + currentIndex + currentTrackingContext.Value;
+            if (currentDecodedContext.Key == null || currentDecodedContext.Value == null)
+            {
+                currentDecodedContext = MorseDecoder.GetEmptyDecodedContext();
+            }
+
+            string cacheHash = currentDecodedMessage + currentIndex + currentDecodedContext.Value;
             if (this.searchStateCache.Contains(cacheHash))
             {
                 await Console.Error.WriteLineAsync($"Cached State: {cacheHash}");
                 return;
             }
 
-            if (currentIndex == this.MorseSequence.Length && currentTrackingContext.Key.Length == 0)
+            if (currentIndex == this.MorseSequence.Length && currentDecodedContext.Key.Length == 0)
             {
-                this.decodedMessages.Add(preceedingMessage);
-                await Console.Error.WriteLineAsync($"Adding decoded message: {preceedingMessage}");
+                this.decodedMessages.Add(currentDecodedMessage);
+                await Console.Error.WriteLineAsync($"Adding decoded message: {currentDecodedMessage}");
                 return;
             }
 
-            string searchScope = this.MorseSequence.Substring(
+            string morseToDecode = this.MorseSequence.Substring(
                 currentIndex, Math.Min(MorseDecoder.MorseCharacterMaxLength, this.MorseSequence.Length - currentIndex));
 
-            ISet<KeyValuePair<string, string>> validSequences = this.GetValidSequencesFromMorse(searchScope, currentTrackingContext);
+            ISet<KeyValuePair<string, string>> decodedSequences = this.DecodeMorse(morseToDecode, currentDecodedContext);
 
             this.searchStateCache.Add(cacheHash);
 
-            foreach (KeyValuePair<string, string> newTrackingContext in validSequences)
+            foreach (KeyValuePair<string, string> newDecodedContext in decodedSequences)
             {
-                int newIndex = newTrackingContext.Key.Length - currentTrackingContext.Key.Length + currentIndex;
+                int newIndex = newDecodedContext.Key.Length - currentDecodedContext.Key.Length + currentIndex;
 
-                await this.SearchMorseSequenceAsync(newIndex, newTrackingContext, preceedingMessage);
+                await this.SearchAndDecodeMorseSequenceAsync(newDecodedContext, newIndex, currentDecodedMessage);
 
-                if (this.CheckWordExists(newTrackingContext.Value))
+                if (this.CheckWordExists(newDecodedContext.Value))
                 {
-                    string newPreceedingMessage = preceedingMessage + newTrackingContext.Value + ";";
+                    string newPreceedingMessage = currentDecodedMessage + newDecodedContext.Value + ";";
                     await Console.Error.WriteLineAsync($"New sequence discovered: {newPreceedingMessage}\n");
 
                     //fork search to track new word
-                    await this.SearchMorseSequenceAsync(newIndex, this.GetEmptyContext(), newPreceedingMessage);
+                    await this.SearchAndDecodeMorseSequenceAsync(MorseDecoder.GetEmptyDecodedContext(), newIndex, newPreceedingMessage);
                 }
             }
         }
 
-        public ISet<KeyValuePair<string, string>> GetValidSequencesFromMorse(string morse, KeyValuePair<string, string> context)
+        public ISet<KeyValuePair<string, string>> DecodeMorse(string morse, KeyValuePair<string, string> currentDecodedContext = default)
         {
             if (string.IsNullOrEmpty(morse))
             {
                 return new HashSet<KeyValuePair<string, string>>();
             }
 
-            if (context.Key == null || context.Value == null)
+            if (currentDecodedContext.Key == null || currentDecodedContext.Value == null)
             {
-                context = this.GetEmptyContext();
+                currentDecodedContext = MorseDecoder.GetEmptyDecodedContext();
             }
 
-            ISet<KeyValuePair<string, string>> validSequences = new HashSet<KeyValuePair<string, string>>();
+            ISet<KeyValuePair<string, string>> decodedSequences = new HashSet<KeyValuePair<string, string>>();
 
-            foreach (string combo in MorseDecoder.SequenceCombinations)
+            //Try all combinations to find decoded messages
+            foreach (string decodeCombination in MorseDecoder.DecodingCombinations)
             {
-                this.ProcessMorseCombo(morse, combo, context, validSequences);
+                this.DecodeMorseWithCombination(morse, decodeCombination, currentDecodedContext, decodedSequences);
             }
 
-            return validSequences;
+            return decodedSequences;
         }
 
-        private void ProcessMorseCombo(
+        private void DecodeMorseWithCombination(
             string morse,
-            string combo,
-            KeyValuePair<string, string> currentProcessingContext,
-            ISet<KeyValuePair<string, string>> validatedSequences)
+            string decodeCombination,
+            KeyValuePair<string, string> currentDecodedContext,
+            ISet<KeyValuePair<string, string>> decodedSequences)
         {
             string morseSequenceProcessed = "";
             string morseSequenceTranslated = "";
+            int decodingIndex = 0;
 
-            int nextMorseIndex = 0;
-            foreach (char morseCharacterProcessSizeChar in combo)
+            foreach (char decodingCharacterSizeChar in decodeCombination)
             {
-                int morseCharacterProcessSize = int.Parse(morseCharacterProcessSizeChar.ToString());
+                int decodingCharacterSize = int.Parse(decodingCharacterSizeChar.ToString());
 
-                if (nextMorseIndex + morseCharacterProcessSize > morse.Length)
+                if (decodingIndex + decodingCharacterSize > morse.Length)
                 {
                     return;
                 }
 
-                string morseCharacterToProcess = morse.Substring(nextMorseIndex, morseCharacterProcessSize);
+                string morseCharacterToDecode = morse.Substring(decodingIndex, decodingCharacterSize);
 
-                if (this.ShouldIgnoreMorse(morseCharacterToProcess))
+                if (this.ShouldIgnoreMorse(morseCharacterToDecode))
                 {
-                    this.ignoredSequences.Add(morseCharacterToProcess);
+                    //ignore characters that are invalid in the current state
+                    this.ignoredSequences.Add(morseCharacterToDecode);
                     return;
                 }
 
-                nextMorseIndex += morseCharacterProcessSize;
-
-                morseSequenceProcessed += morseCharacterToProcess;
-                morseSequenceTranslated += MorseDecoder.MorseDictionary[morseCharacterToProcess];
+                decodingIndex += decodingCharacterSize;
+                morseSequenceProcessed += morseCharacterToDecode;
+                morseSequenceTranslated += MorseDecoder.MorseDictionary[morseCharacterToDecode];
 
                 if (string.IsNullOrEmpty(morseSequenceProcessed))
                 {
                     continue;
                 }
 
-                this.ValidateProcessedMorseSequence(morseSequenceProcessed, morseSequenceTranslated, currentProcessingContext, validatedSequences);
+                this.ValidateDecodedMorseSequence(morseSequenceProcessed, morseSequenceTranslated, currentDecodedContext, decodedSequences);
             }
         }
 
-        private void ValidateProcessedMorseSequence(
+        private void ValidateDecodedMorseSequence(
             string morseSequenceProcessed,
             string morseSequenceTranslated,
-            KeyValuePair<string, string> currentTranslatedContext,
-            ISet<KeyValuePair<string, string>> validSequences)
+            KeyValuePair<string, string> currentDecodedContext,
+            ISet<KeyValuePair<string, string>> decodedSequences)
         {
-            string fullSequenceProcessed = currentTranslatedContext.Key + morseSequenceProcessed;
-            string fullSequenceTranslated = currentTranslatedContext.Value + morseSequenceTranslated;
+            string fullSequenceTranslated = currentDecodedContext.Value + morseSequenceTranslated;
 
-            if (this.CheckPhraseExists(fullSequenceTranslated))
+            if (!this.CheckPhraseExists(fullSequenceTranslated))
             {
-                validSequences.Add(new KeyValuePair<string, string>(fullSequenceProcessed, fullSequenceTranslated));
+                return;
             }
+
+            string fullSequenceProcessed = currentDecodedContext.Key + morseSequenceProcessed;
+            decodedSequences.Add(new KeyValuePair<string, string>(fullSequenceProcessed, fullSequenceTranslated));
         }
 
         private bool ShouldIgnoreMorse(string morse)
@@ -205,11 +215,6 @@ namespace Austine.CodinGame.TheResistance
             return !MorseDecoder.MorseDictionary.ContainsKey(morse)
                    || this.ignoredSequences.Contains(morse)
                    ;
-        }
-
-        private KeyValuePair<string, string> GetEmptyContext()
-        {
-            return new KeyValuePair<string, string>("", "");
         }
 
         private bool CheckPhraseExists(string phrase)
@@ -238,6 +243,11 @@ namespace Austine.CodinGame.TheResistance
             }
 
             return this.WordsByFirstLetter[word[0]].Contains(word);
+        }
+
+        private static KeyValuePair<string, string> GetEmptyDecodedContext()
+        {
+            return new KeyValuePair<string, string>("", "");
         }
     }
     //-----------------------------------------------------------------------------------------------------------------
