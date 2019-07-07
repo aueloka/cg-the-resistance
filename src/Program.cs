@@ -286,7 +286,8 @@ namespace Austine.CodinGame.TheResistance
                 return;
             }
 
-            string searchScope = this.MorseSequence.Substring(currentIndex, Math.Min(MorseDecoder.MorseCharacterMaxLength, this.MorseSequence.Length - currentIndex));
+            string searchScope = this.MorseSequence.Substring(
+                currentIndex, Math.Min(MorseDecoder.MorseCharacterMaxLength, this.MorseSequence.Length - currentIndex));
 
             ISet<KeyValuePair<string, string>> validSequences = this.GetValidSequencesFromMorse(searchScope, currentTrackingContext);
 
@@ -325,12 +326,7 @@ namespace Austine.CodinGame.TheResistance
 
             foreach (string combo in MorseDecoder.SequenceCombinations)
             {
-                this.ProcessMorseCombo(morse, context, validSequences, combo);
-
-                if (true)
-                {
-                    continue;
-                }
+                this.ProcessMorseCombo(morse, combo, context, validSequences);
             }
 
             return validSequences;
@@ -338,65 +334,64 @@ namespace Austine.CodinGame.TheResistance
 
         private void ProcessMorseCombo(
             string morse,
-            KeyValuePair<string, string> context,
-            ISet<KeyValuePair<string, string>> validSequences,
-            string combo)
+            string combo,
+            KeyValuePair<string, string> currentProcessingContext,
+            ISet<KeyValuePair<string, string>> validatedSequences)
         {
-            string comboMorseKey = "";
-            string comboMorseValue = "";
+            string morseSequenceProcessed = "";
+            string morseSequenceTranslated = "";
 
-            int nextIndex = 0;
-            for (int i = 0; i < combo.Length; i++)
+            int nextMorseIndex = 0;
+            foreach (char morseCharacterProcessSizeChar in combo)
             {
-                char morseCharacterDef = combo[i];
-                int countToProcess = int.Parse(morseCharacterDef.ToString());
+                int morseCharacterProcessSize = int.Parse(morseCharacterProcessSizeChar.ToString());
 
-                if (nextIndex + countToProcess > morse.Length)
+                if (nextMorseIndex + morseCharacterProcessSize > morse.Length)
                 {
                     return;
                 }
 
-                string subMorse = morse.Substring(nextIndex, countToProcess);
+                string morseCharacterToProcess = morse.Substring(nextMorseIndex, morseCharacterProcessSize);
 
-                if (this.ShouldIgnoreMorse(subMorse))
+                if (this.ShouldIgnoreMorse(morseCharacterToProcess))
                 {
-                    this.ignoredSequences.Add(subMorse);
+                    this.ignoredSequences.Add(morseCharacterToProcess);
                     return;
                 }
 
-                nextIndex += countToProcess;
+                nextMorseIndex += morseCharacterProcessSize;
 
-                comboMorseKey += subMorse;
-                comboMorseValue += MorseDecoder.MorseDictionary[subMorse];
+                morseSequenceProcessed += morseCharacterToProcess;
+                morseSequenceTranslated += MorseDecoder.MorseDictionary[morseCharacterToProcess];
 
-                if (string.IsNullOrEmpty(comboMorseKey))
+                if (string.IsNullOrEmpty(morseSequenceProcessed))
                 {
                     continue;
                 }
 
-                this.CompareAndAddMorseCombo(context, comboMorseKey, comboMorseValue, validSequences);
+                this.ValidateProcessedMorseSequence(morseSequenceProcessed, morseSequenceTranslated, currentProcessingContext, validatedSequences);
             }
         }
 
-        private void CompareAndAddMorseCombo(
-            KeyValuePair<string, string> context,
-            string comboMorseKey,
-            string comboMorseValue,
+        private void ValidateProcessedMorseSequence(
+            string morseSequenceProcessed,
+            string morseSequenceTranslated,
+            KeyValuePair<string, string> currentTranslatedContext,
             ISet<KeyValuePair<string, string>> validSequences)
         {
-            string contextPhrase = context.Value + comboMorseValue;
-            string contextMorse = context.Key + comboMorseKey;
+            string fullSequenceProcessed = currentTranslatedContext.Key + morseSequenceProcessed;
+            string fullSequenceTranslated = currentTranslatedContext.Value + morseSequenceTranslated;
 
-            if (this.CheckPhraseExists(contextPhrase))
+            if (this.CheckPhraseExists(fullSequenceTranslated))
             {
-                validSequences.Add(new KeyValuePair<string, string>(contextMorse, contextPhrase));
+                validSequences.Add(new KeyValuePair<string, string>(fullSequenceProcessed, fullSequenceTranslated));
             }
         }
 
-        private bool ShouldIgnoreMorse(string subMorse)
+        private bool ShouldIgnoreMorse(string morse)
         {
-            return !MorseDecoder.MorseDictionary.ContainsKey(subMorse)
-                   || this.ignoredSequences.Contains(subMorse)
+            return !MorseDecoder.MorseDictionary.ContainsKey(morse)
+                   || this.ignoredSequences.Contains(morse)
                    ;
         }
 
