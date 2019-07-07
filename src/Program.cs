@@ -9,7 +9,6 @@ namespace Austine.CodinGame.TheResistance
 
     internal class Program
     {
-        #region Initializers
         private static void Main()
         {
             IInputReader inputReader = Program.GetInputReader();
@@ -138,7 +137,5 @@ namespace Austine.CodinGame.TheResistance
             File.AppendAllText(Config.InputFilePath, words.Count.ToString() + Environment.NewLine);
             File.AppendAllLines(Config.InputFilePath, words);
         }
-        #endregion
     }
-    //-----------------------------------------------------------------------------------------------------------------
 }
