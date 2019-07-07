@@ -8,6 +8,18 @@ namespace Austine.CodinGame.TheResistance
     using System.Threading.Tasks;
 
     //-----------------------------------------------------------------------------------------------------------------
+    internal static class RuntimeConfig
+    {
+        public const bool ReadInputFromConsole = false;
+        public const bool ShouldGenerateInputOnRun = true;
+        public const int InputGeneratorWordCount = 500;
+        public const int InputGeneratorWordMin = 3;
+        public const int InputGeneratorWordMax = 12;
+        public const int InputGeneratorSentenceWordCount = 20;
+        public const string InputFilePath = "in.txt";
+        public const string OutputFilePath = "out.txt";
+    }
+    //-----------------------------------------------------------------------------------------------------------------
     public interface IMorseDecoder
     {
         Task<int> DecodeAndReturnMessagesCountAsync(string morseSequence, ISet<string> availableWords = null);
@@ -332,18 +344,6 @@ namespace Austine.CodinGame.TheResistance
     #endregion
     internal class Program
     {
-        internal static class Config
-        {
-            public const bool RunWithConsole = false;
-            public const bool ShouldGenerateInputOnRun = false;
-            public const int InputGeneratorWordCount = 300;
-            public const int InputGeneratorWordMin = 3;
-            public const int InputGeneratorWordMax = 8;
-            public const int InputGeneratorSentenceWordCount = 10;
-            public const string InputFilePath = "in.txt";
-            public const string OutputFilePath = "out.txt";
-        }
-
         #region Initializers
         private static void Main()
         {
@@ -377,13 +377,13 @@ namespace Austine.CodinGame.TheResistance
         {
             IInputReader inputReader;
 
-            if (Config.RunWithConsole)
+            if (RuntimeConfig.ReadInputFromConsole)
             {
                 inputReader = Program.GetConsoleInputReader();
             }
             else
             {
-                inputReader = Program.GetFileInputReader(Config.ShouldGenerateInputOnRun);
+                inputReader = Program.GetFileInputReader(RuntimeConfig.ShouldGenerateInputOnRun);
             }
 
             return inputReader;
@@ -401,17 +401,17 @@ namespace Austine.CodinGame.TheResistance
                 Program.GenerateNewInput();
             }
 
-            return new FileInputReader(Config.InputFilePath);
+            return new FileInputReader(RuntimeConfig.InputFilePath);
         }
 
         private static void GenerateNewInput()
         {
             Random r = new Random(DateTime.Now.Millisecond * DateTime.Now.Millisecond);
 
-            const int wordCount = Config.InputGeneratorWordCount;
-            const int wordMin = Config.InputGeneratorWordMin;
-            const int wordMax = Config.InputGeneratorWordMax;
-            const int sentenceWordCount = Config.InputGeneratorSentenceWordCount;
+            const int wordCount = RuntimeConfig.InputGeneratorWordCount;
+            const int wordMin = RuntimeConfig.InputGeneratorWordMin;
+            const int wordMax = RuntimeConfig.InputGeneratorWordMax;
+            const int sentenceWordCount = RuntimeConfig.InputGeneratorSentenceWordCount;
             const string alphabets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
             IList<string> words = new List<string>();
@@ -438,11 +438,11 @@ namespace Austine.CodinGame.TheResistance
 
                 if (i == 0)
                 {
-                    File.WriteAllText(Config.OutputFilePath, addedWord + ";");
+                    File.WriteAllText(RuntimeConfig.OutputFilePath, addedWord + ";");
                 }
                 else
                 {
-                    File.AppendAllText(Config.OutputFilePath, addedWord + ";");
+                    File.AppendAllText(RuntimeConfig.OutputFilePath, addedWord + ";");
                 }
 
                 Console.WriteLine(addedWord);
@@ -469,9 +469,9 @@ namespace Austine.CodinGame.TheResistance
             Console.WriteLine(morse);
             Console.WriteLine(morse.Length);
 
-            File.WriteAllText(Config.InputFilePath, morse + Environment.NewLine);
-            File.AppendAllText(Config.InputFilePath, words.Count.ToString() + Environment.NewLine);
-            File.AppendAllLines(Config.InputFilePath, words);
+            File.WriteAllText(RuntimeConfig.InputFilePath, morse + Environment.NewLine);
+            File.AppendAllText(RuntimeConfig.InputFilePath, words.Count.ToString() + Environment.NewLine);
+            File.AppendAllLines(RuntimeConfig.InputFilePath, words);
         }
         #endregion
     }
