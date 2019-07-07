@@ -45,8 +45,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\IMorseDecoder.cs" />
+    <Compile Include="Core\MorseDecoder.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Runtime\Config.cs" />
+    <Compile Include="Runtime\ConsoleInputReader.cs" />
+    <Compile Include="Runtime\FileInputReader.cs" />
+    <Compile Include="Runtime\IInputReader.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

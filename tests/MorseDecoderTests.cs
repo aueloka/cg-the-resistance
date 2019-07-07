@@ -1,11 +1,11 @@
 ﻿
 namespace Austine.CodinGame.TheResistance.Tests.Unit
 {
-    using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
     using System.Threading.Tasks;
+    using Austine.CodinGame.TheResistance.Core;
     using Microsoft.VisualStudio.TestTools.UnitTesting;
 
     [TestClass]
