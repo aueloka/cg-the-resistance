@@ -1,6 +1,7 @@
 ﻿
 namespace Austine.CodinGame.TheResistance.Tests.Unit
 {
+    using System.Collections;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.Linq;
@@ -30,12 +31,19 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
         {
             string morse = "--.----.......-.---.--......-..";
 
-            int solution = await this.decoder.DecodeAsync(morse, MorseDecoderTests.GetDefaultDictionary());
-            Assert.AreEqual(6, solution);
+            IEnumerable<string> solution = await this.decoder.DecodeAndReturnMessagesAsync(morse, MorseDecoderTests.GetDefaultDictionary());
+
+            Assert.AreEqual(6, solution.Count());
+            Assert.IsTrue(solution.Contains("GOD E E E E E NOW HERE"));
+            Assert.IsTrue(solution.Contains("GOD E E E E E NOW HER E"));
+            Assert.IsTrue(solution.Contains("GOD E E E E E NO WHERE"));
+            Assert.IsTrue(solution.Contains("GOD IS NOW HERE"));
+            Assert.IsTrue(solution.Contains("GOD IS NOW HER E"));
+            Assert.IsTrue(solution.Contains("GOD IS NO WHERE"));
         }
 
         [TestMethod]
-        public void TestGetValidChildren()
+        public void TestDecodeMorse()
         {
             string morse = "--.-";
 
@@ -55,9 +63,9 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
         }
 
         [TestMethod]
-        public async Task TestSearchSequence()
+        public async Task TestDecodeSequence()
         {
-            await this.decoder.SearchAndDecodeMorseSequenceAsync();
+            await this.decoder.DecodeMorseSequenceAsync();
             Assert.AreEqual(6, this.decoder.DecodedMessageCount);
         }
 
@@ -76,7 +84,7 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
                 WordsByFirstLetter = MorseDecoderTests.GetWordsByFirstLetter(dictionary)
             };
 
-            await this.decoder.SearchAndDecodeMorseSequenceAsync();
+            await this.decoder.DecodeMorseSequenceAsync();
             Assert.AreEqual(2, this.decoder.DecodedMessageCount);
         }
 
@@ -116,7 +124,7 @@ namespace Austine.CodinGame.TheResistance.Tests.Unit
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            await this.decoder.SearchAndDecodeMorseSequenceAsync();
+            await this.decoder.DecodeMorseSequenceAsync();
             stopwatch.Stop();
             return stopwatch.ElapsedMilliseconds;
         }

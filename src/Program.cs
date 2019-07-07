@@ -10,7 +10,9 @@ namespace Austine.CodinGame.TheResistance
     //-----------------------------------------------------------------------------------------------------------------
     public interface IMorseDecoder
     {
-        Task<int> DecodeAsync(string morseSequence, ISet<string> availableWords = null);
+        Task<int> DecodeAndReturnMessagesCountAsync(string morseSequence, ISet<string> availableWords = null);
+
+        Task<IEnumerable<string>> DecodeAndReturnMessagesAsync(string morseSequence, ISet<string> availableWords = null);
     }
     //-----------------------------------------------------------------------------------------------------------------
     public sealed class MorseDecoder : IMorseDecoder
@@ -45,7 +47,10 @@ namespace Austine.CodinGame.TheResistance
 
         public string MorseSequence { get; set; }
 
-        public async Task<int> DecodeAsync(string morseSequence, ISet<string> availableWords = null)
+        /// <summary>
+        /// Returns the number of possible messages embedded in the specified <paramref name="morseSequence"/>
+        /// </summary>
+        public async Task<int> DecodeAndReturnMessagesCountAsync(string morseSequence, ISet<string> availableWords = null)
         {
             this.MorseSequence = morseSequence;
             this.decodedMessages.Clear();
@@ -60,7 +65,7 @@ namespace Austine.CodinGame.TheResistance
 
             try
             {
-                await this.SearchAndDecodeMorseSequenceAsync();
+                await this.DecodeMorseSequenceAsync();
             }
             catch (Exception e)
             {
@@ -75,14 +80,32 @@ namespace Austine.CodinGame.TheResistance
             return this.DecodedMessageCount;
         }
 
-        public async Task SearchAndDecodeMorseSequenceAsync(
+        /// <summary>
+        /// Returns all the possible messages embedded in the specified <paramref name="morseSequence"/>
+        /// </summary>
+        public async Task<IEnumerable<string>> DecodeAndReturnMessagesAsync(string morseSequence, ISet<string> availableWords = null)
+        {
+            await this.DecodeAndReturnMessagesCountAsync(morseSequence, availableWords);
+            return this.decodedMessages;
+        }
+
+        /// <summary>
+        /// Recursively decodes the current <see cref="MorseSequence"/> beginning from the specified <paramref name="startIndex"/>
+        /// </summary>
+        /// <param name="currentDecodedContext">If <paramref name="startIndex"/> is not 0, this may contain decoding information
+        /// from previous positions.</param>
+        /// <param name="startIndex">The position to start decoding from in the <see cref="MorseSequence"/></param>
+        /// <param name="currentDecodedMessage">Full string contain the state of the <see cref="MorseSequence"/> decoding till
+        /// the <paramref name="startIndex"/></param>
+        /// <returns></returns>
+        public async Task DecodeMorseSequenceAsync(
             KeyValuePair<string, string> currentDecodedContext = default,
-            int currentIndex = default,
+            int startIndex = default,
             string currentDecodedMessage = "")
         {
-            if (currentIndex > this.MorseSequence.Length)
+            if (startIndex > this.MorseSequence.Length)
             {
-                await Console.Error.WriteLineAsync($"Index: {currentIndex} has exceeded morse length: {this.MorseSequence.Length}");
+                await Console.Error.WriteLineAsync($"Index: {startIndex} has exceeded morse length: {this.MorseSequence.Length}");
                 return;
             }
 
@@ -91,44 +114,54 @@ namespace Austine.CodinGame.TheResistance
                 currentDecodedContext = MorseDecoder.GetEmptyDecodedContext();
             }
 
-            string cacheHash = currentDecodedMessage + currentIndex + currentDecodedContext.Value;
+            string cacheHash = currentDecodedMessage + startIndex + currentDecodedContext.Value;
             if (this.searchStateCache.Contains(cacheHash))
             {
                 await Console.Error.WriteLineAsync($"Cached State: {cacheHash}");
                 return;
             }
 
-            if (currentIndex == this.MorseSequence.Length && currentDecodedContext.Key.Length == 0)
+            this.searchStateCache.Add(cacheHash);
+
+            //message is fully decoded when search reaches the end of the entire morse sequence
+            //and no sequence is currently being decoded
+            if (startIndex == this.MorseSequence.Length && currentDecodedContext.Key.Length == 0)
             {
-                this.decodedMessages.Add(currentDecodedMessage);
+                this.decodedMessages.Add(currentDecodedMessage.Trim());
                 await Console.Error.WriteLineAsync($"Adding decoded message: {currentDecodedMessage}");
                 return;
             }
 
             string morseToDecode = this.MorseSequence.Substring(
-                currentIndex, Math.Min(MorseDecoder.MorseCharacterMaxLength, this.MorseSequence.Length - currentIndex));
+                startIndex, Math.Min(MorseDecoder.MorseCharacterMaxLength, this.MorseSequence.Length - startIndex));
 
             ISet<KeyValuePair<string, string>> decodedSequences = this.DecodeMorse(morseToDecode, currentDecodedContext);
 
-            this.searchStateCache.Add(cacheHash);
-
             foreach (KeyValuePair<string, string> newDecodedContext in decodedSequences)
             {
-                int newIndex = newDecodedContext.Key.Length - currentDecodedContext.Key.Length + currentIndex;
+                int newIndex = newDecodedContext.Key.Length - currentDecodedContext.Key.Length + startIndex;
 
-                await this.SearchAndDecodeMorseSequenceAsync(newDecodedContext, newIndex, currentDecodedMessage);
+                await this.DecodeMorseSequenceAsync(newDecodedContext, newIndex, currentDecodedMessage);
 
                 if (this.CheckWordExists(newDecodedContext.Value))
                 {
-                    string newPreceedingMessage = currentDecodedMessage + newDecodedContext.Value + ";";
+                    string newPreceedingMessage = currentDecodedMessage + newDecodedContext.Value + " ";
                     await Console.Error.WriteLineAsync($"New sequence discovered: {newPreceedingMessage}\n");
 
-                    //fork search to track new word
-                    await this.SearchAndDecodeMorseSequenceAsync(MorseDecoder.GetEmptyDecodedContext(), newIndex, newPreceedingMessage);
+                    //clear decoded context to start attempting new words
+                    await this.DecodeMorseSequenceAsync(MorseDecoder.GetEmptyDecodedContext(), newIndex, newPreceedingMessage);
                 }
             }
         }
 
+        /// <summary>
+        /// Returns a list of possible character combinations from the given morse input.
+        /// 
+        /// The input morse should have a limit not greater than <see cref="MorseCharacterMaxLength"/>.
+        /// This limit is not enforced but if violated, could result in unexpected behaviours.
+        /// </summary>
+        /// <param name="morse">The morse to decode</param>
+        /// <param name="currentDecodedContext">Possible pre-decoded sequence that the new outputs will be appended to,</param>
         public ISet<KeyValuePair<string, string>> DecodeMorse(string morse, KeyValuePair<string, string> currentDecodedContext = default)
         {
             if (string.IsNullOrEmpty(morse))
@@ -334,7 +367,7 @@ namespace Austine.CodinGame.TheResistance
 
             inputReader.Dispose();
 
-            Console.WriteLine(decoder.DecodeAsync(L).GetAwaiter().GetResult());
+            Console.WriteLine(decoder.DecodeAndReturnMessagesCountAsync(L).GetAwaiter().GetResult());
             Console.Read();
         }
 
