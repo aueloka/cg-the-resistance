@@ -7,8 +7,10 @@ namespace Austine.CodinGame.TheResistance
     using System.IO;
     using System.Threading.Tasks;
 
+    //-----------------------------------------------------------------------------------------------------------------
     internal class Program
     {
+        
         internal static class Config
         {
             public const bool RunWithConsole = false;
@@ -152,13 +154,13 @@ namespace Austine.CodinGame.TheResistance
         }
         #endregion
     }
-
+    //-----------------------------------------------------------------------------------------------------------------
     #region InputReaders
     internal interface IInputReader: IDisposable
     {
         string ReadLine();
     }
-
+    //-----------------------------------------------------------------------------------------------------------------
     internal sealed class ConsoleInputReader : IInputReader
     {
         public string ReadLine()
@@ -171,7 +173,7 @@ namespace Austine.CodinGame.TheResistance
             return;
         }
     }
-
+    //-----------------------------------------------------------------------------------------------------------------
     internal sealed class FileInputReader : IInputReader
     {
         private readonly StreamReader file;
@@ -195,12 +197,12 @@ namespace Austine.CodinGame.TheResistance
         }
     }
     #endregion
-
+    //-----------------------------------------------------------------------------------------------------------------
     public interface IMorseDecoder
     {
         Task<int> DecodeAsync(string morseSequence, ISet<string> availableWords = null);
     }
-
+    //-----------------------------------------------------------------------------------------------------------------
     public sealed class MorseDecoder : IMorseDecoder
     {
         public static readonly IDictionary<string, char> MorseDictionary = new Dictionary<string, char>
@@ -428,4 +430,5 @@ namespace Austine.CodinGame.TheResistance
             return this.WordsByFirstLetter[word[0]].Contains(word);
         }
     }
+    //-----------------------------------------------------------------------------------------------------------------
 }
